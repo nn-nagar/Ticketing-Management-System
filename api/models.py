@@ -97,7 +97,22 @@ class MyUser(AbstractBaseUser):
         return bool(self.linkedin_token) and self.expiry_date > timezone.now()
 
 
-class Location(models.Model):
+class BaseModel(models.Model):
+    created_by = models.CharField(
+        max_length=50, null=True, blank=True, help_text="username"
+    )
+    updated_by = models.CharField(
+        max_length=25, null=True, blank=True, help_text="username"
+    )
+    created_at = models.DateTimeField(null=True, blank=True, auto_now_add=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+    is_deleted = models.BooleanField(default=False, help_text="Used for Soft Delete")
+
+    class Meta:
+        abstract = True
+
+
+class Location(BaseModel):
     location = models.CharField(max_length=250)
     status = models.CharField(max_length=2, choices=(('1', 'Active'), ('2', 'Inactive')), default=1)
     date_created = models.DateTimeField(default=timezone.now)
@@ -107,14 +122,17 @@ class Location(models.Model):
         return self.location
 
 
-class Ticket(models.Model):
+class Ticket(BaseModel):
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
-        editable=False)
-    code = models.CharField(max_length=100)
-    source = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='depart_location')
-    destination = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='destination')
+        editable=False,
+        unique=True)
+    code = models.SlugField(max_length=50, blank=True, default=uuid.uuid4().hex[:5].upper(), editable=False)
+    source = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='depart_location', blank=True,
+                               null=True)
+    destination = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='destination', blank=True,
+                                    null=True)
     travel_date = models.DateTimeField()
     passenger_name = models.CharField(max_length=250)
     Pricing = models.PositiveIntegerField(blank=True, null=True)
@@ -123,12 +141,4 @@ class Ticket(models.Model):
     date_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return str(self.code + ' - ' + self.pk)
-
-
-
-
-
-
-
-
+        return str(self.id)
